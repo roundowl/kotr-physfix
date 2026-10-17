@@ -174,7 +174,7 @@ static void trace_poll_key(void)
 {
     if (g_tracekey && !g_trace_armed && (GetAsyncKeyState(VK_F12) & 0x8001)) {
         g_trace_armed = GetTickCount();
-        plog("trace armed (F12): the next two bodies touching another body (contact begun up to 10 s ago) get traced");
+        plog("trace armed (F12): the next two bodies in a collision (body contacts begun up to 10 s ago count) get traced");
     }
 }
 
@@ -269,6 +269,10 @@ static void __cdecl col_check(unsigned char *item)
 {
     InterlockedIncrement(&g_col_calls);
     if (g_log) track_stuck(item);
+    if (g_trace_armed) trace_maybe_start(item);   /* any collision, world contacts included */
+    trace(item, "  collision handling: hit %08lx frac %.4f col.n (%+.3f %+.3f %+.3f)\n", *(DWORD *)(item + MI_HIT),
+          *(float *)(item + MI_FRAC), ((float *)(item + MI_COL_N))[0], ((float *)(item + MI_COL_N))[1],
+          ((float *)(item + MI_COL_N))[2]);
     float *p = (float *)(item + MI_COL_P), *n = (float *)(item + MI_COL_N);
     const float *pos = (const float *)(item + MI_NEW_POS), *old = (const float *)(item + MI_OLD_POS);
     float dx = p[0] - pos[0], dy = p[1] - pos[1], dz = p[2] - pos[2];
