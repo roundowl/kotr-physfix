@@ -152,6 +152,7 @@ static float mass_of(unsigned char *item)
 /* ---- per-step trace (debug) ---- */
 
 #define TRACE_STEPS 400
+#define TRACE_LOOKBACK 10000   /* ms */
 static DWORD g_trace_armed;
 static struct { unsigned char *item; int left; FILE *f; } g_tr[2];
 
@@ -173,7 +174,7 @@ static void trace_poll_key(void)
 {
     if (g_tracekey && !g_trace_armed && (GetAsyncKeyState(VK_F12) & 0x8001)) {
         g_trace_armed = GetTickCount();
-        plog("trace armed (F12): next two bodies that touch another body get traced");
+        plog("trace armed (F12): the next two bodies touching another body (contact begun up to 10 s ago) get traced");
     }
 }
 
@@ -359,7 +360,9 @@ static void __cdecl contact_fix(unsigned char *set, unsigned char *ebp)
     }
     t->touching = 1;
     if (!t->since) t->since = GetTickCount();
-    if (g_trace_armed && t->since >= g_trace_armed) trace_maybe_start(item);
+    /* contacts that began up to TRACE_LOOKBACK before F12 count too (catch one in progress),
+     * but not long-standing ones such as a parked truck resting against its trailer */
+    if (g_trace_armed && t->since + TRACE_LOOKBACK >= g_trace_armed) trace_maybe_start(item);
 
     /* velocity: inelastic exchange of the approaching normal component, split by mass */
     const float *vi = (const float *)(item + MI_V), *vo = (const float *)(other + MI_V);
